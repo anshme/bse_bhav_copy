@@ -1,18 +1,67 @@
+from datetime import datetime
+from fileinput import filename
+import json
 import pandas as pd
 import re
-from constants import TIMESTAMP_COLUMN, NUMERIC_COLUMNS
+from constants import (ERROR_HEADERS, ERROR_LOG, 
+                       SYMBOL_COLUMN, TIMESTAMP_COLUMN, 
+                       NUMERIC_COLUMNS, PARSED_TRADE_DATE,
+                       logger)
 
 
 class Cleaner:
-    def __init__(self, df, filename):
-        self.df = df
-        self.filename = filename
+    def __init__(self):
+        pass
 
-    def clean(self):
-        self.df = self.clean_string_columns(self.df)
-        self.df = self.convert_numeric_columns(self.df)
-        self.df["PARSED_TRADE_DATE"] = self.df[TIMESTAMP_COLUMN].apply(Cleaner.parse_date_string)
-        return self.df
+    def clean(self, df, filename):
+        df = self.clean_string_columns(df)
+        df = self.convert_numeric_columns(df)
+        df = self.drop_missing_pks(df, filename)
+        df[PARSED_TRADE_DATE] = df[TIMESTAMP_COLUMN].apply(Cleaner.parse_date_string)
+        df = df.drop_duplicates(subset=[SYMBOL_COLUMN, PARSED_TRADE_DATE]).copy()
+        return df
+    
+    def drop_missing_pks(self, df, filename):
+
+        missing_timestamp_mask = (
+            df[TIMESTAMP_COLUMN].isna() | (df[TIMESTAMP_COLUMN].str.strip().str.lower().isin(['', 'nan']))
+        )
+
+        match = re.match(r"(\d{8})_", filename)
+        if match:
+            date_str = match.group(1)
+            # Convert YYYYmmdd to DD-MMM-YYYY (e.g., 20210623 -> 23-JUN-2021)
+            try:
+                parsed_date = pd.to_datetime(date_str, format="%Y%m%d")
+                formatted_date = parsed_date.strftime("%d-%b-%Y").upper()
+                # Fill only missing TIMESTAMPs
+                df.loc[missing_timestamp_mask, TIMESTAMP_COLUMN] = formatted_date
+            except Exception:
+                pass  # If parsing fails, skip filling
+
+        # Now drop rows with missing SYMBOL or TIMESTAMP
+        missing_mask = (
+            df[SYMBOL_COLUMN].isna() | (df[SYMBOL_COLUMN].str.strip().str.lower().isin(['', 'nan']))
+            | df[TIMESTAMP_COLUMN].isna() | (df[TIMESTAMP_COLUMN].str.strip().str.lower().isin(['', 'nan']))
+        )
+        if missing_mask.any():
+            dropped = df[missing_mask].copy()
+            dropped_rows = []
+            for idx, row in dropped.iterrows():
+                dropped_rows.append({
+                    "source_file": filename,
+                    "row_index": idx,
+                    "error_reason": "MISSING_PK",
+                    "raw_timestamp": row.get(TIMESTAMP_COLUMN, ""),
+                    "raw_row_json": json.dumps(row.to_dict(), default=str),
+                    "execution_timestamp": datetime.now().isoformat()
+                })
+            pd.DataFrame(dropped_rows, columns=ERROR_HEADERS).to_csv(
+                ERROR_LOG, mode="a", index=False, header=False
+            )
+            logger.info("Logged %d dropped records from %s", len(dropped_rows), filename)
+            df = df[~missing_mask].copy()
+        return df
 
     def clean_string_columns(self, df):
         """

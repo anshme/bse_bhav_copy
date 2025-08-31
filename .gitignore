@@ -1,0 +1,10 @@
+gpt_code.py
+load_errors.csv
+output.log
+stocks.duckdb
+stocks_test.duckdb
+read_from_db.py
+tester.py
+./extracted_data
+./Compressed_data
+./__pycache__
