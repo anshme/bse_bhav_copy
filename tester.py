@@ -10,9 +10,11 @@
 # print(df.head(5))
 from duckdb_manager import DuckDBManager
 from stocks_pipeline import StocksPipeline
-from constants import DUCKDB_PATH
+from constants import DUCKDB_PATH, NIFTY_FIFTY_TABLE
 
 duckdb_manager = DuckDBManager(DUCKDB_PATH)
 duckdb_con = duckdb_manager.get_connection()
-stocks = StocksPipeline(duckdb_con)
-stocks.insert_into_db("20250603_NSE.csv")
+# stocks = StocksPipeline(duckdb_con)
+# stocks.insert_into_db("20220801_NSE.csv")
+
+# duckdb_con.execute(f"DROP TABLE IF EXISTS {NIFTY_FIFTY_TABLE}")

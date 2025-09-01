@@ -3,9 +3,9 @@ import pandas as pd
 
 from cleaner import Cleaner
 from constants import (CSV_FOLDER, ERROR_LOG, 
-                       STAGING_TABLE, STOCK_TABLE, 
+                       STAGING_TABLE, STOCK_TABLE, STOCK_TABLE_COL_TYPES,
                        SYMBOL_COLUMN, TIMESTAMP_COLUMN, logger, 
-                       COL_TYPES, ORDERED_CSV_COLUMNS, PARSED_TRADE_DATE)
+                       ORDERED_CSV_COLUMNS, PARSED_TRADE_DATE)
 from datetime import datetime
 
 
@@ -16,7 +16,7 @@ class StocksPipeline:
 
     def _init_table(self):
         columns = ",\n".join(
-            [f"{col.lower()} {COL_TYPES.get(col, 'VARCHAR')}" for col in ORDERED_CSV_COLUMNS]
+            [f"{col.lower()} {STOCK_TABLE_COL_TYPES.get(col, 'VARCHAR')}" for col in ORDERED_CSV_COLUMNS]
         )
 
         create_table_query = f"""
@@ -61,7 +61,7 @@ class StocksPipeline:
             pd.DataFrame([err_row]).to_csv(ERROR_LOG, index=False, mode="a", header=False)
             return pd.DataFrame()  # Return an empty DataFrame on error
 
-    def insert_into_db(self, filename):
+    def insert_into_main_db(self, filename):
         file_path = self._get_file_path(filename)
 
         df = self.read_from_csv(file_path)
