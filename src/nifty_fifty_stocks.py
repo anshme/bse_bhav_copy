@@ -1,4 +1,4 @@
-from src.constants import (NIFTY_FIFTY_TABLE, SYMBOL_COLUMN, NIFTY_FIFTY, logger, PARSED_TRADE_DATE,
+from constants import (NIFTY_FIFTY_TABLE, SYMBOL, NIFTY_FIFTY, logger, TRADE_DATE,
                        NIFTY_FIFTY_LIST_TABLE, STOCK_TABLE, NIFTY_FIFTY_COL_TYPES)
 
 class NiftyFiftyStocks:
@@ -10,7 +10,7 @@ class NiftyFiftyStocks:
     def _init_nifty_fifty_list_table(self):
         create_nifty_fifty_list_table_query = f"""
             CREATE TABLE IF NOT EXISTS {NIFTY_FIFTY_LIST_TABLE} (
-                {SYMBOL_COLUMN} VARCHAR PRIMARY KEY
+                {SYMBOL} VARCHAR PRIMARY KEY
             )
         """
 
@@ -26,7 +26,7 @@ class NiftyFiftyStocks:
         create_table_query = f"""
             CREATE TABLE IF NOT EXISTS {NIFTY_FIFTY_TABLE} (
                 {columns},
-                PRIMARY KEY ({SYMBOL_COLUMN.lower()}, {PARSED_TRADE_DATE.lower()})
+                PRIMARY KEY ({SYMBOL.lower()}, {TRADE_DATE.lower()})
             )
         """
 
@@ -35,9 +35,9 @@ class NiftyFiftyStocks:
 
     def upsert_stocks_to_nifty_fifty_list(self):
         upsert_query = f"""
-            INSERT INTO {NIFTY_FIFTY_LIST_TABLE} ({SYMBOL_COLUMN})
+            INSERT INTO {NIFTY_FIFTY_LIST_TABLE} ({SYMBOL})
             VALUES (?)
-            ON CONFLICT ({SYMBOL_COLUMN}) DO UPDATE SET {SYMBOL_COLUMN}=excluded.{SYMBOL_COLUMN}
+            ON CONFLICT ({SYMBOL}) DO UPDATE SET {SYMBOL}=excluded.{SYMBOL}
         """
 
         for stock in NIFTY_FIFTY:
@@ -60,8 +60,8 @@ class NiftyFiftyStocks:
             SELECT {select_columns}
             FROM {STOCK_TABLE} s
             JOIN {NIFTY_FIFTY_LIST_TABLE} n
-            ON s.{SYMBOL_COLUMN.lower()} = n.{SYMBOL_COLUMN.lower()}
-            ON CONFLICT ({SYMBOL_COLUMN.lower()}, {PARSED_TRADE_DATE.lower()}) DO NOTHING;
+            ON s.{SYMBOL.lower()} = n.{SYMBOL.lower()}
+            ON CONFLICT ({SYMBOL.lower()}, {TRADE_DATE.lower()}) DO NOTHING;
         """
         logger.info("Inserting NIFTY 50 stocks into '%s' table", NIFTY_FIFTY_TABLE)
 
@@ -78,18 +78,18 @@ class NiftyFiftyStocks:
 
         calculation_query = f"""
             SELECT 
-                t1.{SYMBOL_COLUMN},
-                t1.{PARSED_TRADE_DATE},
+                t1.{SYMBOL},
+                t1.{TRADE_DATE},
                 MIN(t2.high) AS {low_col},
-                MIN_BY(t2.{PARSED_TRADE_DATE}, t2.high) AS {low_date_col},
+                MIN_BY(t2.{TRADE_DATE}, t2.high) AS {low_date_col},
                 MAX(t2.high) AS {high_col},
-                MAX_BY(t2.{PARSED_TRADE_DATE}, t2.high) AS {high_date_col}
+                MAX_BY(t2.{TRADE_DATE}, t2.high) AS {high_date_col}
             FROM {NIFTY_FIFTY_TABLE} t1
             JOIN {NIFTY_FIFTY_TABLE} t2
-                ON t1.{SYMBOL_COLUMN} = t2.{SYMBOL_COLUMN}
-                AND t2.{PARSED_TRADE_DATE} BETWEEN t1.{PARSED_TRADE_DATE} - INTERVAL {weeks} WEEK 
-                                           AND t1.{PARSED_TRADE_DATE}
-            GROUP BY t1.{SYMBOL_COLUMN}, t1.{PARSED_TRADE_DATE}
+                ON t1.{SYMBOL} = t2.{SYMBOL}
+                AND t2.{TRADE_DATE} BETWEEN t1.{TRADE_DATE} - INTERVAL {weeks} WEEK 
+                                           AND t1.{TRADE_DATE}
+            GROUP BY t1.{SYMBOL}, t1.{TRADE_DATE}
         """
 
         if overwrite:
@@ -102,8 +102,8 @@ class NiftyFiftyStocks:
                 FROM (
                     {calculation_query}
                 ) AS subquery
-                WHERE nf.{SYMBOL_COLUMN} = subquery.{SYMBOL_COLUMN}
-                  AND nf.{PARSED_TRADE_DATE} = subquery.{PARSED_TRADE_DATE}
+                WHERE nf.{SYMBOL} = subquery.{SYMBOL}
+                  AND nf.{TRADE_DATE} = subquery.{TRADE_DATE}
             """
         else:
             update_query = f"""
@@ -115,8 +115,8 @@ class NiftyFiftyStocks:
                 FROM (
                     {calculation_query}
                 ) AS subquery
-                WHERE nf.{SYMBOL_COLUMN} = subquery.{SYMBOL_COLUMN}
-                  AND nf.{PARSED_TRADE_DATE} = subquery.{PARSED_TRADE_DATE}
+                WHERE nf.{SYMBOL} = subquery.{SYMBOL}
+                  AND nf.{TRADE_DATE} = subquery.{TRADE_DATE}
                   AND (
                         nf.{high_col} IS NULL OR 
                         nf.{high_date_col} IS NULL OR 
