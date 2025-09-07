@@ -47,7 +47,7 @@ def load_nifty_fifty_stocks_to_db():
     nifty_fifty_stocks.upsert_stocks_to_nifty_fifty_from_all_stocks()
 
 def update_nifty_fifty_highs_lows():
-    weeks = [4, 12, 52]
+    weeks = [4, 12, 24, 52]
     for week in weeks:
         nifty_fifty_stocks = NiftyFiftyStocks(con)
         nifty_fifty_stocks.update_high_and_low(week, overwrite=True)

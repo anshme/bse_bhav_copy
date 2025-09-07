@@ -68,8 +68,8 @@ class NiftyFiftyStocks:
         self.con.execute(nifty50_insert_query)
 
     def update_high_and_low(self, weeks: int, overwrite: bool = False):
-        if weeks not in [4, 12, 52]:
-            raise ValueError("Invalid weeks parameter. Must be one of [4, 12, 52].")
+        if weeks not in [4, 12, 24, 52]:
+            raise ValueError("Invalid weeks parameter. Must be one of [4, 12, 24, 52].")
         
         high_col = f"WEEK_HIGH_{str(weeks)}"
         high_date_col = f"WEEK_HIGH_{str(weeks)}_DATE"
